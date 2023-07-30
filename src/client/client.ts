@@ -41,9 +41,11 @@ function toggleCad(newState?: boolean) {
             GetPedInVehicleSeat(GetVehiclePedIsIn(ped, false), -1) === ped;
         const isPassenger =
             GetPedInVehicleSeat(GetVehiclePedIsIn(ped, false), 0) === ped;
+
+        if (Config.vehicle.exemptPassenger && isPassenger) return;
+
         const mph = GetEntitySpeed(GetVehiclePedIsIn(ped, false)) * 2.236936;
         if (mph > Config.vehicle.speed) {
-            if (Config.vehicle.exemptPassenger && isPassenger) return;
             isDriver &&
                 ShowNotification(
                     `~r~Please slow down below ${Config.vehicle.speed} MPH to use the tablet!`
