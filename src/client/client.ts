@@ -108,6 +108,9 @@ Config.vehicle.checkSpeed &&
                         GetEntitySpeed(GetVehiclePedIsIn(ped, false)) *
                         2.236936;
                     if (mph > Config.vehicle.speed) {
+                        if (!Config.vehicle.checkSpeed) return;
+                        if (Config.vehicle.exemptPassenger && isPassenger)
+                            return;
                         SetNuiFocus(false, false);
                         NUIMessage({
                             type: "toggle",
