@@ -2,22 +2,22 @@
     Builder by Whitigol#2122
 */
 
-const fs = require('fs');
-const path = require('path');
-const { spawn } = require('child_process');
-const { resourceDir, resourceName } = require('./config.json');
-const Obfuscator = require('javascript-obfuscator');
+const fs = require("fs");
+const path = require("path");
+const { spawn } = require("child_process");
+const { resourceDir, resourceName } = require("./config.json");
+const Obfuscator = require("javascript-obfuscator");
 
 // Move config.json from src to dist
-fs.copyFileSync('./src/config.json', './dist/config.json');
+fs.copyFileSync("./src/config.json", "./dist/config.json");
 
-if (!resourceDir || resourceDir === '') {
-    console.log('Please specify a resource directory in config.json');
+if (!resourceDir || resourceDir === "") {
+    console.log("Please specify a resource directory in config.json");
     process.exit(1);
 }
 
-if (!resourceName || resourceName === '') {
-    console.log('Please specify a resource name in config.json');
+if (!resourceName || resourceName === "") {
+    console.log("Please specify a resource name in config.json");
     process.exit(1);
 }
 
@@ -34,30 +34,30 @@ console.log(`\x1b[32mBuilding ${resourceName} to ${resourcePath}\x1b[0m`);
 // fs.writeFileSync('./dist/package.json', JSON.stringify(packageJson, null, 4));
 
 // Build the config
-spawn('yarn generateConfig', [], {
+spawn("yarn generateConfig", [], {
     shell: true,
-    stdio: 'inherit',
-    cwd: __dirname
-})
+    stdio: "inherit",
+    cwd: __dirname,
+});
 
 // Compile the typescript files
-spawn('npx tsc', [], {
+spawn("npx tsc", [], {
     shell: true,
-    stdio: 'inherit'
+    stdio: "inherit",
 });
 
 // Bundle the resource files
-spawn('npx webpack', [], {
+spawn("npx webpack", [], {
     shell: true,
-    stdio: 'inherit',
-    cwd: __dirname
-})
+    stdio: "inherit",
+    cwd: __dirname,
+});
 
 // Delete all files in the resource folder
-spawn('rmdir', ['/s', '/q', `${resourcePath}`], {
+spawn("rmdir", ["/s", "/q", `${resourcePath}`], {
     shell: true,
-    stdio: 'inherit'
-})
+    stdio: "inherit",
+});
 
 // // Create the resource path
 // spawn('mkdir', [resourcePath], {
@@ -66,40 +66,44 @@ spawn('rmdir', ['/s', '/q', `${resourcePath}`], {
 // })
 
 // Copy all files from the dist folder to the resource folder
-const copy = spawn('xcopy', [
-    'dist',
-    resourcePath,
-    '/E',
-    '/I',
-    '/C',
-    '/H',
-    '/F',
-    '/Y',
-], {
-    shell: true,
-    stdio: 'inherit'
-})
+const copy = spawn(
+    "xcopy",
+    ["dist", resourcePath, "/E", "/I", "/C", "/H", "/F", "/Y"],
+    {
+        shell: true,
+        stdio: "inherit",
+    }
+);
 
-copy.on('close', () => {
+copy.on("close", () => {
     RunObfuscator();
-})
+});
 
 function RunObfuscator() {
     let files = [];
     function ThroughDirectory(directory) {
-        fs.readdirSync(directory).forEach(file => {
+        fs.readdirSync(directory).forEach((file) => {
             const Absolute = path.join(directory, file);
-            if (fs.statSync(Absolute).isDirectory()) return ThroughDirectory(Absolute);
+            if (fs.statSync(Absolute).isDirectory())
+                return ThroughDirectory(Absolute);
             else return files.push(Absolute);
-        })
+        });
     }
 
     ThroughDirectory(resourcePath);
 
-    files.forEach(file => {
-        if (!file.endsWith('.js')) return;
-        console.log('Obfuscating: ' + file + '...');
-        const fileContents = fs.readFileSync(file, 'utf8');
+    files.forEach((file) => {
+        if (!file.endsWith(".js")) return;
+        if (
+            !file.endsWith("bundle.js") &&
+            file.endsWith(".js") &&
+            !file.includes("nui")
+        ) {
+            fs.unlinkSync(file);
+            return;
+        }
+        console.log("Obfuscating: " + file + "...");
+        const fileContents = fs.readFileSync(file, "utf8");
         const obfuscate = Obfuscator.obfuscate(fileContents, {
             compact: true,
             controlFlowFlattening: true,
@@ -111,5 +115,5 @@ function RunObfuscator() {
         });
 
         fs.writeFileSync(file, obfuscate.getObfuscatedCode());
-    })
+    });
 }
