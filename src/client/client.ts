@@ -10,41 +10,64 @@ const Config: ConfigD = JSON.parse(
 );
 
 let state = false;
+let tick = null;
 
 RegisterCommand(
-    "cad",
+    `${Config.command}`,
     () => {
         toggleCad();
     },
     false
 );
 
-emit("chat:addSuggestion", "/cad", "Toggle the CAD");
+// Load URL
+NUIMessage({
+    type: "toggle",
+    state,
+    name: Config.cadName,
+    link: Config.cadUrl,
+});
+
+emit("chat:addSuggestion", `/${Config.command}`, `${Config.helpText}`);
 
 function NUIMessage(data: any) {
     SendNuiMessage(JSON.stringify(data));
 }
 
 function toggleCad(newState?: boolean) {
-    if (IsPedInAnyVehicle(PlayerPedId(), false)) {
-        const vehSpeed = GetEntitySpeed(
-            GetVehiclePedIsIn(PlayerPedId(), false)
-        );
-        if (vehSpeed > 0.0) {
-            ShowNotification(
-                "~r~Please stop your vehicle before opening the CAD."
-            );
+    const ped = PlayerPedId();
+    if (Config.vehicle.checkSpeed && IsPedInAnyVehicle(ped, false)) {
+        const isDriver =
+            GetPedInVehicleSeat(GetVehiclePedIsIn(ped, false), -1) === ped;
+        const isPassenger =
+            GetPedInVehicleSeat(GetVehiclePedIsIn(ped, false), 0) === ped;
+        const mph = GetEntitySpeed(GetVehiclePedIsIn(ped, false)) * 2.236936;
+        if (mph > Config.vehicle.speed) {
+            if (Config.vehicle.exemptPassenger && isPassenger) return;
+            isDriver &&
+                ShowNotification(
+                    `~r~Please slow down below ${Config.vehicle.speed} MPH to use the tablet!`
+                );
             return;
         }
+        newState ? (state = newState) : (state = !state);
+        state ? SetNuiFocus(true, true) : SetNuiFocus(false, false);
+        NUIMessage({
+            type: "toggle",
+            state,
+            name: Config.cadName,
+            link: Config.cadUrl,
+        });
+    } else {
+        newState ? (state = newState) : (state = !state);
+        state ? SetNuiFocus(true, true) : SetNuiFocus(false, false);
+        NUIMessage({
+            type: "toggle",
+            state,
+            name: Config.cadName,
+            link: Config.cadUrl,
+        });
     }
-    newState ? (state = newState) : (state = !state);
-    state ? SetNuiFocus(true, true) : SetNuiFocus(false, false);
-    NUIMessage({
-        type: "toggle",
-        state,
-        name: Config.cadName,
-        link: Config.cadUrl,
-    });
 }
 
 RegisterNuiCallback("close", () => {
@@ -62,3 +85,38 @@ RegisterCommand(
 RegisterKeyMapping("cad", "Toggle the CAD", "keyboard", ""); // Key mapping is blank by default
 
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
+Config.vehicle.checkSpeed &&
+    setTick(async () => {
+        while (true) {
+            await delay(0);
+            if (state) {
+                const ped = PlayerPedId();
+                if (IsPedInAnyVehicle(ped, false)) {
+                    const isDriver =
+                        GetPedInVehicleSeat(
+                            GetVehiclePedIsIn(ped, false),
+                            -1
+                        ) === ped;
+                    const isPassenger =
+                        GetPedInVehicleSeat(
+                            GetVehiclePedIsIn(ped, false),
+                            0
+                        ) === ped;
+
+                    const mph =
+                        GetEntitySpeed(GetVehiclePedIsIn(ped, false)) *
+                        2.236936;
+                    if (mph > Config.vehicle.speed) {
+                        SetNuiFocus(false, false);
+                        NUIMessage({
+                            type: "toggle",
+                            state: false,
+                            name: Config.cadName,
+                            link: Config.cadUrl,
+                        });
+                    }
+                }
+            }
+        }
+    });

@@ -30,7 +30,6 @@ $(() => {
 
 window.addEventListener("message", (event) => {
     const data = event.data;
-    console.log(JSON.stringify(data));
     const { type, state } = data;
     if (type === "toggle") {
         if (!loaded) {
